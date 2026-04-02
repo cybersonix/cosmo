@@ -1,13 +1,17 @@
 <div align="center">
-  <div style="position: relative; display: inline-block; margin-bottom: 20px;">
+  <img src="docs/logo.svg" alt="COSMO" width="600">
+
+   <!-- <div style="position: relative; display: inline-block; margin-bottom: 20px;">
     <h1 style="font-size: 72px; font-weight: 900; color: transparent; background: linear-gradient(135deg, #1e69c5, #28b581); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; font-family: 'Orbitron', 'Segoe UI', sans-serif; text-transform: uppercase; letter-spacing: 3px; text-shadow: 0 0 20px rgba(96, 165, 250, 0.3);">
       COSMO
     </h1>
-  </div>
+   </div>
 
-  <p style="font-size: 16px; color: #94a3b8; margin: 0 0 30px 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; letter-spacing: 1px; text-transform: uppercase;">
+   <p style="font-size: 16px; color: #94a3b8; margin: 0 0 30px 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; letter-spacing: 1px; text-transform: uppercase;">
     Collaborative Open-Source Simulation & Modeling
-  </p>
+   </p> -->
+
+  <b>Collaborative Open-Source Simulation &amp; Modeling</b>
 </div>
 
 COSMO (Collaborative Open-Source Simulation & Modeling) 是一个基于 C++11 的开源多学科联合仿真引擎，用于 FMI (Functional Mock-up Interface) 标准的模型联合仿真。
@@ -185,20 +189,20 @@ cosmo/
 
 当前测试覆盖包含以下测试套件（共约 185 个测试用例，分布在 22 个测试文件中）：
 
-| 测试模块             | 测试文件 | 测试数量 | 状态   |
-| -------------------- | -------- | -------- | ------ |
-| 仿真核心             | simulation_test.cpp | 27+ | 通过 |
-| 仿真结构配置         | simulation_structure_test.cpp | 16+ | 通过 |
-| 仿真监听器           | simulation_listener_test.cpp | 15+ | 通过 |
-| 场景系统             | scenario_test.cpp | 18+ | 通过 |
-| C API 接口           | cosmo_api_test.cpp | 28+ | 通过 |
-| 数据路由器           | data_router_test.cpp | 13+ | 通过 |
-| CSV 写入器           | csv_writer_test.cpp | 7 | 通过 |
-| 边界条件             | boundary_test.cpp | 11+ | 通过 |
-| FMI 1.0 接口         | fmi1_test.cpp | 7+ | 通过 |
-| FMI 2.0 接口         | fmi_test.cpp | 2+ | 通过 |
-| FMI 3.0 接口         | fmi3_test.cpp | 7+ | 通过 |
-| 集成仿真             | mass_spring_damper_test.cpp | 8 | 通过 |
+| 测试模块     | 测试文件                      | 测试数量 | 状态 |
+| ------------ | ----------------------------- | -------- | ---- |
+| 仿真核心     | simulation_test.cpp           | 27+      | 通过 |
+| 仿真结构配置 | simulation_structure_test.cpp | 16+      | 通过 |
+| 仿真监听器   | simulation_listener_test.cpp  | 15+      | 通过 |
+| 场景系统     | scenario_test.cpp             | 18+      | 通过 |
+| C API 接口   | cosmo_api_test.cpp            | 28+      | 通过 |
+| 数据路由器   | data_router_test.cpp          | 13+      | 通过 |
+| CSV 写入器   | csv_writer_test.cpp           | 7        | 通过 |
+| 边界条件     | boundary_test.cpp             | 11+      | 通过 |
+| FMI 1.0 接口 | fmi1_test.cpp                 | 7+       | 通过 |
+| FMI 2.0 接口 | fmi_test.cpp                  | 2+       | 通过 |
+| FMI 3.0 接口 | fmi3_test.cpp                 | 7+       | 通过 |
+| 集成仿真     | mass_spring_damper_test.cpp   | 8        | 通过 |
 
 运行所有测试：
 
