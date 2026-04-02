@@ -1,0 +1,8 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/cosmoTargets.cmake")
+
+check_required_components(cosmo)
+
+set(COSMO_VERSION @PROJECT_VERSION@)
+set(COSMO_INCLUDE_DIRS "@CMAKE_INSTALL_PREFIX@/@CMAKE_INSTALL_INCLUDEDIR@")

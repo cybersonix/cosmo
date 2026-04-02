@@ -1,0 +1,56 @@
+# Build directory
+build/
+cmake-build-*/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.cproject
+.settings/
+
+# Compiled files
+*.o
+*.obj
+*.a
+*.so
+*.so.*
+*.dylib
+*.dll
+*.lib
+*.exe
+*.out
+*.app
+
+# Debug files
+*.dSYM/
+*.su
+*.idb
+*.pdb
+
+# Test artifacts
+/tmp/
+*.csv
+*.log
+Testing/
+
+# Coverage files
+*.gcno
+*.gcda
+*.gcov
+coverage/
+lcov.info
+
+# Package files
+*.deb
+*.rpm
+*.tar.gz
+*.zip
+
+# OS files
+.DS_Store
+Thumbs.db
+
