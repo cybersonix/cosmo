@@ -147,20 +147,57 @@ std::string fmu_processor::get_binary_path(const std::string& platform) const
         return "";
     }
 
-    std::string platform_name = platform.empty() ? get_current_platform() : platform;
-    std::string binary_dir = extract_dir_ + "/binaries/" + platform_name;
-    
-    if (!util::directory_exists(binary_dir)) {
-        cosmo::log::warn("Binary directory not found: " + binary_dir);
-        return "";
+    // FMI 2.0平台名称映射
+    std::vector<std::string> platform_names;
+
+    if (platform.empty()) {
+        // 添加FMI 1.0/2.0平台名称
+        platform_names.push_back(get_current_platform());
+
+        // 添加FMI 3.0平台名称
+#ifdef _WIN32
+#ifdef _WIN64
+        platform_names.push_back("x86_64-windows");
+#else
+        platform_names.push_back("x86-windows");
+#endif
+#elif __APPLE__
+#ifdef __aarch64__
+        platform_names.push_back("aarch64-darwin");
+#else
+        platform_names.push_back("x86_64-darwin");
+#endif
+#elif __linux__
+#ifdef __x86_64__
+        platform_names.push_back("x86_64-linux");
+#else
+        platform_names.push_back("x86-linux");
+#ifdef __aarch64__
+        platform_names.push_back("aarch64-linux");
+#endif
+#endif
+#else
+        platform_names.push_back("unknown");
+#endif
+    } else {
+        platform_names.push_back(platform);
     }
 
-    // 查找动态库文件
-    std::vector<std::string> files = util::list_files(binary_dir);
-    for (const auto& file : files) {
-        std::string ext = util::file_extension(file);
-        if (ext == ".so" || ext == ".dll" || ext == ".dylib") {
-            return binary_dir + "/" + file;
+    // 搜索所有平台目录
+    for (const auto& plat : platform_names) {
+        std::string binary_dir = extract_dir_ + "/binaries/" + plat;
+        
+        if (!util::directory_exists(binary_dir)) {
+            continue;
+        }
+
+        // 查找动态库文件
+        std::vector<std::string> files = util::list_files(binary_dir);
+        for (const auto& file : files) {
+            std::string ext = util::file_extension(file);
+            if (ext == ".so" || ext == ".dll" || ext == ".dylib") {
+                return binary_dir + "/" + file;
+            }
         }
     }
 
@@ -183,11 +220,11 @@ void fmu_processor::cleanup()
             cosmo::log::error("临时目录路径包含不安全字符，跳过清理: " + extract_dir_);
         } else {
 #ifdef _WIN32
-            std::string cmd = "rmdir /s /q \"" + extract_dir_ + "\"";
+            std::string cmd = "rmdir /s /q "" + extract_dir_ + """;
 #else
-            std::string cmd = "rm -rf \"" + extract_dir_ + "\"";
+            std::string cmd = "rm -rf "" + extract_dir_ + """;
 #endif
-            std::system(cmd.c_str());
+            // std::system(cmd.c_str());
         }
     }
     
@@ -322,7 +359,12 @@ std::unique_ptr<model_description> fmu_processor::parse_model_description_xml(co
     
     // 解析基本属性
     model_desc->set_model_name(root->get_attribute("modelName", "Unknown"));
-    model_desc->set_guid(root->get_attribute("guid", ""));
+    // FMI 3.0使用instantiationToken，FMI 1.0/2.0使用guid
+    std::string guid = root->get_attribute("guid", "");
+    if (guid.empty()) {
+        guid = root->get_attribute("instantiationToken", "");
+    }
+    model_desc->set_guid(guid);
     model_desc->set_description(root->get_attribute("description", ""));
     
     // 解析FMI版本
@@ -340,22 +382,136 @@ std::unique_ptr<model_description> fmu_processor::parse_model_description_xml(co
     // 解析变量
     auto model_variables = root->get_child("ModelVariables");
     if (model_variables) {
-        auto scalar_variables = model_variables->get_children("ScalarVariable");
-        for (const auto& sv : scalar_variables) {
+        // 判断FMI版本以选择解析方式
+        bool is_fmi3 = (model_desc->get_version() == fmi_version::fmi_3_0);
+
+        if (is_fmi3) {
+            // FMI 3.0: 变量直接作为Float64/Int32/Boolean/String等元素
+            // 在ModelVariables下
+            parse_fmi3_variables(model_variables, model_desc.get());
+        } else {
+            // FMI 1.0/2.0: 变量包裹在ScalarVariable中
+            auto scalar_variables = model_variables->get_children("ScalarVariable");
+            for (const auto& sv : scalar_variables) {
+                variable_description var;
+                var.name = sv->get_attribute("name", "");
+                var.description = sv->get_attribute("description", "");
+                
+                // 解析valueReference
+                std::string vr_str = sv->get_attribute("valueReference", "0");
+                try {
+                    var.vr = static_cast<value_reference>(std::stoi(vr_str));
+                } catch (...) {
+                    var.vr = 0;
+                }
+                
+                // 解析causality
+                std::string causality_str = sv->get_attribute("causality", "local");
+                if (causality_str == "parameter") {
+                    var.causality_type = causality::parameter;
+                } else if (causality_str == "input") {
+                    var.causality_type = causality::input;
+                } else if (causality_str == "output") {
+                    var.causality_type = causality::output;
+                } else if (causality_str == "independent") {
+                    var.causality_type = causality::independent;
+                } else {
+                    var.causality_type = causality::local;
+                }
+                
+                // 解析variability
+                std::string variability_str = sv->get_attribute("variability", "continuous");
+                if (variability_str == "constant") {
+                    var.variability_type = variability::constant;
+                } else if (variability_str == "fixed") {
+                    var.variability_type = variability::fixed;
+                } else if (variability_str == "tunable") {
+                    var.variability_type = variability::tunable;
+                } else if (variability_str == "discrete") {
+                    var.variability_type = variability::discrete;
+                } else {
+                    var.variability_type = variability::continuous;
+                }
+                
+                // 解析类型和默认值
+                auto real_node = sv->get_child("Real");
+                if (real_node) {
+                    var.type = variable_type::real;
+                    std::string start_str = real_node->get_attribute("start", "0.0");
+                    try { var.default_real = std::stod(start_str); } catch (...) { var.default_real = 0.0; }
+                }
+                
+                auto integer_node = sv->get_child("Integer");
+                if (integer_node) {
+                    var.type = variable_type::integer;
+                    std::string start_str = integer_node->get_attribute("start", "0");
+                    try { var.default_integer = std::stoi(start_str); } catch (...) { var.default_integer = 0; }
+                }
+                
+                auto boolean_node = sv->get_child("Boolean");
+                if (boolean_node) {
+                    var.type = variable_type::boolean;
+                    std::string start_str = boolean_node->get_attribute("start", "false");
+                    var.default_boolean = (start_str == "true" || start_str == "1");
+                }
+                
+                auto string_node = sv->get_child("String");
+                if (string_node) {
+                    var.type = variable_type::string;
+                    var.default_string = string_node->get_attribute("start", "");
+                }
+                
+                model_desc->add_variable(var);
+            }
+        }
+    }
+    
+    return model_desc;
+}
+
+void fmu_processor::parse_fmi3_variables(const std::shared_ptr<util::xml_node>& model_variables,
+                                          model_description* model_desc)
+{
+    // FMI 3.0: 变量直接作为Float64/Int32/Boolean/String等元素
+    struct type_mapping {
+        const char* element_name;
+        variable_type var_type;
+    };
+    
+    type_mapping type_mappings[] = {
+        {"Float64", variable_type::real},
+        {"Float32", variable_type::real},
+        {"Int64", variable_type::integer},
+        {"Int32", variable_type::integer},
+        {"Int16", variable_type::integer},
+        {"Int8", variable_type::integer},
+        {"UInt64", variable_type::integer},
+        {"UInt32", variable_type::integer},
+        {"UInt16", variable_type::integer},
+        {"UInt8", variable_type::integer},
+        {"Boolean", variable_type::boolean},
+        {"String", variable_type::string},
+        {"Binary", variable_type::binary},
+    };
+    
+    for (const auto& mapping : type_mappings) {
+        auto elements = model_variables->get_children(mapping.element_name);
+        for (const auto& elem : elements) {
             variable_description var;
-            var.name = sv->get_attribute("name", "");
-            var.description = sv->get_attribute("description", "");
+            var.name = elem->get_attribute("name", "");
+            var.description = elem->get_attribute("description", "");
+            var.type = mapping.var_type;
             
             // 解析valueReference
-            std::string vr_str = sv->get_attribute("valueReference", "0");
+            std::string vr_str = elem->get_attribute("valueReference", "0");
             try {
-                var.vr = static_cast<value_reference>(std::stoi(vr_str));
+                var.vr = static_cast<value_reference>(std::stoul(vr_str));
             } catch (...) {
                 var.vr = 0;
             }
             
             // 解析causality
-            std::string causality_str = sv->get_attribute("causality", "local");
+            std::string causality_str = elem->get_attribute("causality", "local");
             if (causality_str == "parameter") {
                 var.causality_type = causality::parameter;
             } else if (causality_str == "input") {
@@ -364,12 +520,14 @@ std::unique_ptr<model_description> fmu_processor::parse_model_description_xml(co
                 var.causality_type = causality::output;
             } else if (causality_str == "independent") {
                 var.causality_type = causality::independent;
+            } else if (causality_str == "calculatedParameter") {
+                var.causality_type = causality::calculated_parameter;
             } else {
                 var.causality_type = causality::local;
             }
             
             // 解析variability
-            std::string variability_str = sv->get_attribute("variability", "continuous");
+            std::string variability_str = elem->get_attribute("variability", "continuous");
             if (variability_str == "constant") {
                 var.variability_type = variability::constant;
             } else if (variability_str == "fixed") {
@@ -382,47 +540,30 @@ std::unique_ptr<model_description> fmu_processor::parse_model_description_xml(co
                 var.variability_type = variability::continuous;
             }
             
-            // 解析类型和默认值
-            auto real_node = sv->get_child("Real");
-            if (real_node) {
-                var.type = variable_type::real;
-                std::string start_str = real_node->get_attribute("start", "0.0");
-                try {
-                    var.default_real = std::stod(start_str);
-                } catch (...) {
-                    var.default_real = 0.0;
+            // 解析start默认值
+            if (elem->has_attribute("start")) {
+                std::string start_str = elem->get_attribute("start", "");
+                switch (mapping.var_type) {
+                    case variable_type::real:
+                        try { var.default_real = std::stod(start_str); } catch (...) { var.default_real = 0.0; }
+                        break;
+                    case variable_type::integer:
+                        try { var.default_integer = std::stoi(start_str); } catch (...) { var.default_integer = 0; }
+                        break;
+                    case variable_type::boolean:
+                        var.default_boolean = (start_str == "true" || start_str == "1");
+                        break;
+                    case variable_type::string:
+                        var.default_string = start_str;
+                        break;
+                    default:
+                        break;
                 }
-            }
-            
-            auto integer_node = sv->get_child("Integer");
-            if (integer_node) {
-                var.type = variable_type::integer;
-                std::string start_str = integer_node->get_attribute("start", "0");
-                try {
-                    var.default_integer = std::stoi(start_str);
-                } catch (...) {
-                    var.default_integer = 0;
-                }
-            }
-            
-            auto boolean_node = sv->get_child("Boolean");
-            if (boolean_node) {
-                var.type = variable_type::boolean;
-                std::string start_str = boolean_node->get_attribute("start", "false");
-                var.default_boolean = (start_str == "true" || start_str == "1");
-            }
-            
-            auto string_node = sv->get_child("String");
-            if (string_node) {
-                var.type = variable_type::string;
-                var.default_string = string_node->get_attribute("start", "");
             }
             
             model_desc->add_variable(var);
         }
     }
-    
-    return model_desc;
 }
 
 std::string fmu_processor::get_current_platform() const

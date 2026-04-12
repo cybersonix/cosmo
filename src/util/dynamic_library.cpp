@@ -116,11 +116,11 @@ void dynamic_library::platform_unload()
 {
 #ifdef _WIN32
     if (handle_) {
-        FreeLibrary(static_cast<HMODULE>(handle_));
+        // FreeLibrary(static_cast<HMODULE>(handle_));
     }
 #else
     if (handle_) {
-        dlclose(handle_);
+        // dlclose(handle_);
     }
 #endif
 }

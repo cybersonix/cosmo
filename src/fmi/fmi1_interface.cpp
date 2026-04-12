@@ -384,7 +384,34 @@ fmi1_component_t fmi1_interface::instantiate_slave(
         error_ = "instantiate_slave function not loaded";
         return nullptr;
     }
-    return instantiate_slave_(
+    // FMI 1.0 instantiate_slave signature:
+    // fmiComponent fmiInstantiateSlave(fmiString  instanceName,
+    //                                  fmiString  fmuGUID,
+    //                                  fmiString  fmuLocation,
+    //                                  fmiString  mimeType,
+    //                                  fmiReal    timeout,
+    //                                  fmiBoolean visible,
+    //                                  fmiBoolean interactive,
+    //                                  fmiCallbackFunctions functions,
+    //                                  fmiBoolean loggingOn);
+    // Note: functions is passed by value in FMI 1.0, not by pointer!
+    
+    // We need to cast the function pointer to take fmi1_callback_functions_t by value
+    typedef fmi1_component_t (*fmi1_instantiate_slave_by_val_ft)(
+        fmi1_string_t instance_name,
+        fmi1_string_t GUID,
+        fmi1_string_t fmu_location,
+        fmi1_string_t mime_type,
+        fmi1_real_t timeout,
+        fmi1_boolean_t visible,
+        fmi1_boolean_t interactive,
+        fmi1_callback_functions_t functions,
+        fmi1_boolean_t logging_on
+    );
+    
+    auto instantiate_slave_by_val = reinterpret_cast<fmi1_instantiate_slave_by_val_ft>(instantiate_slave_);
+    
+    return instantiate_slave_by_val(
         instance_name.c_str(),
         guid.c_str(),
         fmu_location.c_str(),
@@ -392,7 +419,7 @@ fmi1_component_t fmi1_interface::instantiate_slave(
         timeout,
         visible ? 1 : 0,
         interactive ? 1 : 0,
-        const_cast<fmi1_callback_functions_t*>(functions),
+        *functions,
         logging_on ? 1 : 0
     );
 }

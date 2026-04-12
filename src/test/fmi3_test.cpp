@@ -56,19 +56,17 @@ TEST_CASE(fmi3_load_invalid_library)
 }
 
 /**
- * @brief 测试FMI 3.0回调函数结构
+ * @brief 测试FMI 3.0回调函数类型
  */
-TEST_CASE(fmi3_callback_functions)
+TEST_CASE(fmi3_callback_types)
 {
-    fmi3::fmi3_callback_functions_t callbacks;
-    callbacks.logger = nullptr;
-    callbacks.allocate_memory = nullptr;
-    callbacks.free_memory = nullptr;
-    callbacks.instance_environment = nullptr;
-    
-    // 验证结构体可以正确初始化
-    REQUIRE(callbacks.logger == nullptr);
-    REQUIRE(callbacks.instance_environment == nullptr);
+    // 验证FMI 3.0日志回调类型可以被赋值为nullptr
+    fmi3::fmi3_log_message_callback_ft log_cb = nullptr;
+    REQUIRE(log_cb == nullptr);
+
+    // 验证FMI 3.0中间更新回调类型可以被赋值为nullptr
+    fmi3::fmi3_intermediate_update_callback_ft update_cb = nullptr;
+    REQUIRE(update_cb == nullptr);
 }
 
 /**

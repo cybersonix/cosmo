@@ -3,6 +3,7 @@
 
 #include "cosmo/fmi/model_description.hpp"
 #include "cosmo/util/filesystem.hpp"
+#include "cosmo/util/xml_parser.hpp"
 
 #include <string>
 #include <memory>
@@ -74,6 +75,10 @@ private:
 
     // 解析modelDescription.xml内容
     std::unique_ptr<model_description> parse_model_description_xml(const std::string& xml_content);
+
+    // 解析FMI 3.0变量（直接Float64/Int32/Boolean/String元素）
+    void parse_fmi3_variables(const std::shared_ptr<util::xml_node>& model_variables,
+                              model_description* model_desc);
 
     // 获取当前平台名称
     std::string get_current_platform() const;

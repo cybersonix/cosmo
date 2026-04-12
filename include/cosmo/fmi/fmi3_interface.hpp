@@ -44,7 +44,27 @@ typedef enum {
     fmi3_fatal = 4
 } fmi3_status_t;
 
-// 回调函数类型
+// 回调函数类型（FMI 3.0最终标准）
+typedef void (*fmi3_log_message_callback_ft)(
+    fmi3_instance_environment_t instance_environment,
+    fmi3_status_t status,
+    fmi3_string_t category,
+    fmi3_string_t message
+);
+
+typedef void (*fmi3_intermediate_update_callback_ft)(
+    fmi3_instance_environment_t instance_environment,
+    fmi3_float64_t intermediateUpdateTime,
+    fmi3_boolean_t clocksTicked,
+    fmi3_boolean_t intermediateVariableSetRequested,
+    fmi3_boolean_t intermediateVariableGetAllowed,
+    fmi3_boolean_t intermediateVariableStepFinished,
+    fmi3_boolean_t canReturnEarly,
+    fmi3_boolean_t* earlyReturnRequested,
+    fmi3_float64_t* lastSuccessfulTime
+);
+
+// 兼容旧的回调函数类型（variadic logger）
 typedef void (*fmi3_callback_logger_ft)(
     fmi3_instance_environment_t env,
     fmi3_status_t status,
@@ -52,17 +72,6 @@ typedef void (*fmi3_callback_logger_ft)(
     fmi3_string_t message,
     ...
 );
-
-typedef void* (*fmi3_callback_allocate_memory_ft)(fmi3_size_t nobj, fmi3_size_t size);
-typedef void (*fmi3_callback_free_memory_ft)(void* obj);
-
-// 回调函数结构体
-typedef struct {
-    fmi3_callback_logger_ft logger;
-    fmi3_callback_allocate_memory_ft allocate_memory;
-    fmi3_callback_free_memory_ft free_memory;
-    fmi3_instance_environment_t instance_environment;
-} fmi3_callback_functions_t;
 
 // 函数指针类型定义
 typedef const char* (*fmi3_get_version_ft)();
@@ -72,8 +81,13 @@ typedef fmi3_instance_t (*fmi3_instantiate_ft)(
     fmi3_string_t resource_path,
     fmi3_boolean_t visible,
     fmi3_boolean_t logging_on,
+    fmi3_boolean_t event_mode_used,
+    fmi3_boolean_t early_return_allowed,
+    const fmi3_value_reference_t required_intermediate_variables[],
+    fmi3_size_t n_required_intermediate_variables,
     fmi3_instance_environment_t instance_environment,
-    fmi3_callback_functions_t* callbacks
+    fmi3_log_message_callback_ft log_message,
+    fmi3_intermediate_update_callback_ft intermediate_update
 );
 typedef void (*fmi3_free_instance_ft)(fmi3_instance_t instance);
 typedef fmi3_status_t (*fmi3_enter_initialization_mode_ft)(
@@ -189,8 +203,11 @@ public:
         const std::string& resource_path,
         bool visible,
         bool logging_on,
+        bool event_mode_used,
+        bool early_return_allowed,
         fmi3_instance_environment_t instance_environment,
-        fmi3_callback_functions_t* callbacks
+        fmi3_log_message_callback_ft log_message,
+        fmi3_intermediate_update_callback_ft intermediate_update
     );
     void free_instance(fmi3_instance_t instance);
 

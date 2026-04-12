@@ -59,10 +59,11 @@ static void run_test(const std::string& name, std::function<void()> fn)
 static std::string get_fmu_dir()
 {
     std::vector<std::string> search_paths = {
-        "./data/fmus/mass_spring_damper",
-        "../data/fmus/mass_spring_damper",
-        "../../data/fmus/mass_spring_damper",
-        "/home/sun/cosmo/cosmo/data/fmus/mass_spring_damper",
+        // 实例：data/fmus/<fmi_version>/mass_spring_damper
+        "./data/fmus/1.0/mass_spring_damper",
+        "../data/fmus/1.0/mass_spring_damper",
+        "../../data/fmus/1.0/mass_spring_damper",
+        "/home/sun/cosmo/cosmo/data/fmus/1.0/mass_spring_damper",
     };
 
     for (const auto& p : search_paths) {

@@ -22,17 +22,12 @@ void model_description::add_variable(const variable_description& var)
 
 const variable_description* model_description::get_variable_by_name(const std::string& name) const
 {
-    auto it = variable_name_to_vr.find(name);
-    if (it != variable_name_to_vr.end()) {
-        value_reference vr = it->second;
-        // Find the variable with this VR
-        auto var_it = std::find_if(variables.begin(), variables.end(),
-            [vr](const variable_description& var) {
-                return var.vr == vr;
-            });
-        if (var_it != variables.end()) {
-            return &(*var_it);
-        }
+    auto var_it = std::find_if(variables.begin(), variables.end(),
+        [&name](const variable_description& var) {
+            return var.name == name;
+        });
+    if (var_it != variables.end()) {
+        return &(*var_it);
     }
     return nullptr;
 }

@@ -115,7 +115,12 @@ void csv_writer::on_post_init(double start_time)
                     if (bound_sim_->get_real(var, val) == fmi::fmi_ok) {
                         values[var] = val;
                     } else {
-                        values[var] = 0.0;
+                        fmi::fmi_integer int_val = 0;
+                        if (bound_sim_->get_integer(var, int_val) == fmi::fmi_ok) {
+                            values[var] = static_cast<double>(int_val);
+                        } else {
+                            values[var] = 0.0;
+                        }
                     }
                 }
             }
@@ -154,7 +159,12 @@ void csv_writer::on_post_step(double current_time, double /*step_size*/)
                 if (bound_sim_->get_real(var, val) == fmi::fmi_ok) {
                     values[var] = val;
                 } else {
-                    values[var] = 0.0;
+                    fmi::fmi_integer int_val = 0;
+                    if (bound_sim_->get_integer(var, int_val) == fmi::fmi_ok) {
+                        values[var] = static_cast<double>(int_val);
+                    } else {
+                        values[var] = 0.0;
+                    }
                 }
             }
         }

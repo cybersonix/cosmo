@@ -15,6 +15,7 @@
 #include "cosmo/fmi/fmu_processor.hpp"
 #include "cosmo/fmi/fmi1_interface.hpp"
 #include "cosmo/fmi/fmi_interface.hpp"
+#include "cosmo/fmi/fmi3_interface.hpp"
 
 #include <memory>
 
@@ -25,7 +26,7 @@ namespace simulation {
  * @brief 基于真实FMI接口的模型实例
  *
  * 通过加载FMU文件并调用FMI标准函数来实现model_instance接口。
- * 支持FMI 1.0和FMI 2.0 Co-Simulation模式。
+ * 支持FMI 1.0、FMI 2.0和FMI 3.0 Co-Simulation模式。
  */
 class fmi_model_instance : public model_instance
 {
@@ -102,6 +103,10 @@ private:
     std::unique_ptr<fmi::fmi_interface> fmi2_iface_;
     fmi::fmi2::fmi2_component_t fmi2_component_;
 
+    // FMI 3.0接口
+    std::unique_ptr<fmi::fmi3::fmi3_interface> fmi3_iface_;
+    fmi::fmi3::fmi3_instance_t fmi3_component_;
+
     // 状态追踪
     bool inited_;
     bool terminated_;
@@ -111,6 +116,9 @@ private:
 
     // 加载FMI 2.0 FMU
     bool load_fmi2(const std::string& fmu_path);
+
+    // 加载FMI 3.0 FMU
+    bool load_fmi3(const std::string& fmu_path);
 
     // FMI 1.0 日志回调（variadic, 不能精确声明）
     static void fmi1_logger(void* component, const char* instance_name,
@@ -122,9 +130,19 @@ private:
                             int status, const char* category,
                             const char* message, ...);
 
+    // FMI 3.0 日志回调（FMI 3.0最终标准，非variadic）
+    static void fmi3_log_message_callback(void* instance_environment,
+                                          fmi::fmi3::fmi3_status_t status,
+                                          const char* category,
+                                          const char* message);
+
     // FMI 1.0 内存管理回调
     static void* fmi1_allocate_memory(size_t n, size_t size);
     static void fmi1_free_memory(void* obj);
+
+    // FMI 2.0 内存管理回调
+    static void* fmi2_allocate_memory(size_t n, size_t size);
+    static void fmi2_free_memory(void* obj);
 };
 
 /**

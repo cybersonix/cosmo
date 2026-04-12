@@ -297,8 +297,11 @@ fmi3_instance_t fmi3_interface::instantiate(
     const std::string& resource_path,
     bool visible,
     bool logging_on,
+    bool event_mode_used,
+    bool early_return_allowed,
     fmi3_instance_environment_t instance_environment,
-    fmi3_callback_functions_t* callbacks)
+    fmi3_log_message_callback_ft log_message,
+    fmi3_intermediate_update_callback_ft intermediate_update)
 {
     if (!instantiate_) {
         error_ = "Library not loaded";
@@ -311,8 +314,13 @@ fmi3_instance_t fmi3_interface::instantiate(
         resource_path.c_str(),
         visible ? 1 : 0,
         logging_on ? 1 : 0,
+        event_mode_used ? 1 : 0,
+        early_return_allowed ? 1 : 0,
+        nullptr,  // requiredIntermediateVariables
+        0,        // nRequiredIntermediateVariables
         instance_environment,
-        callbacks);
+        log_message,
+        intermediate_update);
 
     if (!instance) {
         error_ = "FMI 3.0 instantiation failed";
@@ -491,10 +499,11 @@ fmi3_status_t fmi3_interface::do_step(
     fmi3_boolean_t event_needed = 0;
     fmi3_boolean_t terminate_flag = 0;
     fmi3_boolean_t early_ret = 0;
+    fmi3_float64_t last_time = 0;
 
     fmi3_status_t status = do_step_(instance, current_communication_point, communication_step_size,
                                      no_set_fmu_state_prior ? 1 : 0,
-                                     &event_needed, &terminate_flag, &early_ret, last_successful_time);
+                                     &event_needed, &terminate_flag, &early_ret, &last_time);
 
     if (event_handling_needed) {
         *event_handling_needed = (event_needed != 0);
@@ -504,6 +513,9 @@ fmi3_status_t fmi3_interface::do_step(
     }
     if (early_return) {
         *early_return = (early_ret != 0);
+    }
+    if (last_successful_time) {
+        *last_successful_time = last_time;
     }
 
     return status;
